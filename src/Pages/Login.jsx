@@ -3,47 +3,53 @@ import Boton from "../Components/Boton";
 import { useState} from "react";
 import { POST } from "../Services/Fetch";
 import { Link, useNavigate} from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 
 const Login = () => {
 
+    const [token, setToken] = useState("");
+    const [decoded, setDecoded] = useState("");
     const [formData, setFormData] = useState({});
     const navigate = useNavigate();
-    
 
     const submmitLogin = async () => {
         if (!formData?.name || !formData.password) {
             window.alert("Complete los campos para continuar.");
             return;
-        }else
-        {
-            // FETCH POST AL LOGIN
+        }
 
-            const loginData = {
-                Username: formData.name,
-                Password: formData.password
-            };
+        const loginData = {
+            Username: formData.name,
+            Password: formData.password
+        };
 
-            POST("login", loginData)
-                .then(res => {
-                    
-                    if (res?.accessToken) {
-                        // GUARDAR EL TOKEN
-                        localStorage.setItem("jwtToken", res.accessToken);
-            
-                        // GUARDAR DATOS DE USUARIO
-                        const userData = {
-                            name: formData.name,
-                            time: new Date(Date.now()).toDateString()
-                        };
-                        localStorage.setItem("usrData", JSON.stringify(userData));
-                        window.location.replace("/inicio");
-                    } else {
-                        window.alert("Error: No se recibió un token de autenticación.");
-                    }
-                })
+        try {
+            const rsp = await POST("login", loginData);
+
+            if (rsp?.accessToken) {
+                // GUARDAR EL TOKEN
+                localStorage.setItem("jwtToken", rsp.accessToken);
+                const decodedToken = jwtDecode(rsp.accessToken);
+                setDecoded(decodedToken);
+
+                // GUARDAR DATOS DE USUARIO
+                const userData = {
+                    name: decoded.name,
+                    time: new Date(Date.now()).toDateString()
+                };
+                localStorage.setItem("usrData", JSON.stringify(userData));
+
+                // Redirigir al inicio
+                location.replace("/inicio")
+            } else {
+                window.alert("Error: No se recibió un token de autenticación.");
             }
-    }
+        } catch (err) {
+            console.error('Error during login:', err.message);
+            window.alert(err.message);
+        }
+    };
 
 
     return(
@@ -63,7 +69,8 @@ const Login = () => {
                         />
                     <Boton 
                         texto={'Log In'}
-                        funcion={() => {submmitLogin()}}
+                        funcion={() => {submmitLogin();
+                        }}
                         />
                     <Link
                         to={"/Signin"}
